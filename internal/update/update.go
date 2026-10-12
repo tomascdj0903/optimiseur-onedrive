@@ -1,6 +1,7 @@
-// Package update : mise à jour automatique depuis les « releases » GitHub.
-// Le nouvel exécutable n'est installé que si son empreinte SHA-256 correspond
-// à celle publiée dans la même release.
+// Package update : mise à jour automatique depuis le dépôt GitHub public.
+// Un petit fichier « latest.json » indique la dernière version, l'adresse de
+// l'exécutable et son empreinte SHA-256 ; le nouvel exécutable n'est installé
+// que si son empreinte correspond.
 package update
 
 import (
@@ -30,10 +31,19 @@ type Release struct {
 	Name   string  `json:"name"`
 	Body   string  `json:"body"`
 	Assets []Asset `json:"assets"`
+	SHA256 string  `json:"-"`
+}
+
+// Manifest : contenu de latest.json.
+type Manifest struct {
+	Version string `json:"version"`
+	Exe     string `json:"exe"`
+	SHA256  string `json:"sha256"`
+	Notes   string `json:"notes"`
 }
 
 type Updater struct {
-	API       string // https://api.github.com/repos/<owner>/<repo>
+	Manifest  string // URL de latest.json
 	AssetName string // OptimiseurOneDrive.exe
 	HTTP      *http.Client
 }
@@ -47,9 +57,9 @@ func (u *Updater) client() *http.Client {
 
 // Latest interroge la dernière version publiée.
 func (u *Updater) Latest(ctx context.Context) (*Release, error) {
-	req, _ := http.NewRequestWithContext(ctx, "GET", u.API+"/releases/latest", nil)
-	req.Header.Set("Accept", "application/vnd.github+json")
+	req, _ := http.NewRequestWithContext(ctx, "GET", u.Manifest, nil)
 	req.Header.Set("User-Agent", "optimiseur-onedrive")
+	req.Header.Set("Cache-Control", "no-cache")
 	resp, err := u.client().Do(req)
 	if err != nil {
 		return nil, err
@@ -61,11 +71,15 @@ func (u *Updater) Latest(ctx context.Context) (*Release, error) {
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("réponse GitHub %d", resp.StatusCode)
 	}
-	var r Release
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&r); err != nil {
-		return nil, err
+	var m Manifest
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&m); err != nil {
+		return nil, fmt.Errorf("fichier de version illisible : %v", err)
 	}
-	return &r, nil
+	if m.Version == "" || m.Exe == "" || len(m.SHA256) != 64 {
+		return nil, errors.New("fichier de version incomplet")
+	}
+	return &Release{Tag: m.Version, Body: m.Notes, SHA256: strings.ToLower(m.SHA256),
+		Assets: []Asset{{Name: u.AssetName, URL: m.Exe}}}, nil
 }
 
 func parse(v string) []int {
@@ -152,6 +166,11 @@ func (u *Updater) get(ctx context.Context, url string, w io.Writer, limit int64,
 
 // ExpectedHash lit l'empreinte publiée (fichier « <asset>.sha256 »).
 func (u *Updater) ExpectedHash(ctx context.Context, r *Release) (string, error) {
+	if len(r.SHA256) == 64 {
+		if _, err := hex.DecodeString(r.SHA256); err == nil {
+			return r.SHA256, nil
+		}
+	}
 	a := r.asset(u.AssetName + ".sha256")
 	if a == nil {
 		return "", errors.New("empreinte SHA-256 absente de la version publiée : mise à jour refusée")

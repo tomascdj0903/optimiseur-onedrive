@@ -3,7 +3,7 @@
 Outil Windows qui diagnostique et réduit l'espace disque occupé par OneDrive, **sans perte de données**. Il se présente sous forme d'un exécutable portable en console (français). Il peut, avec l'accord de l'utilisateur, partager sa console et son rapport en direct vers une webapp de suivi privée.
 
 - Guide pour la personne aidée : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)
-- Téléchargement : onglet **Releases** (`OptimiseurOneDrive.exe` et son empreinte `.sha256`)
+- Téléchargement direct : https://github.com/tomascdj0903/optimiseur-onedrive/raw/main/release/OptimiseurOneDrive.exe (empreinte dans `release/OptimiseurOneDrive.exe.sha256`)
 
 ## Ce que fait l'outil
 
@@ -66,14 +66,17 @@ La « restauration » remet le **réglage**, pas une copie locale. Les fichiers 
 
 ## Mises à jour automatiques
 
-Au démarrage, l'exe interroge `api.github.com/repos/tomascdj0903/optimiseur-onedrive/releases/latest`. Si une version plus récente existe, il propose de l'installer. Il télécharge alors l'exe **et** le fichier `.sha256`, vérifie l'empreinte, remplace l'exécutable en gardant l'ancien en `.old`, puis redémarre. Toute empreinte absente ou fausse entraîne un refus.
+Au démarrage, l'exe lit `release/latest.json` dans ce dépôt (version, adresse de l'exe, empreinte SHA-256). Si une version plus récente existe, il propose de l'installer. Il télécharge alors l'exe, vérifie l'empreinte, remplace l'exécutable en gardant l'ancien en `.old`, puis redémarre. Toute empreinte absente ou fausse entraîne un refus.
 
 Pour publier une version :
 ```bash
 VERSION=1.0.1
 GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o dist/OptimiseurOneDrive.exe ./cmd/optimiseur
-(cd dist && sha256sum OptimiseurOneDrive.exe > OptimiseurOneDrive.exe.sha256)
-gh release create v$VERSION dist/OptimiseurOneDrive.exe dist/OptimiseurOneDrive.exe.sha256 --title "v$VERSION" --notes "…"
+cp dist/OptimiseurOneDrive.exe release/
+H=$(sha256sum release/OptimiseurOneDrive.exe | cut -d' ' -f1)
+echo "$H  OptimiseurOneDrive.exe" > release/OptimiseurOneDrive.exe.sha256
+# mettre à jour release/latest.json : "version": "$VERSION", "sha256": "$H"
+git add release && git commit -m "Version $VERSION" && git push
 ```
 
 ## Construire et tester

@@ -4,9 +4,8 @@ Ce programme vous aide à comprendre pourquoi OneDrive prend autant de place sur
 
 ## 1. Télécharger
 
-1. Ouvrez la page **https://github.com/tomascdj0903/optimiseur-onedrive/releases/latest**.
-2. Cliquez sur **`OptimiseurOneDrive.exe`** pour le télécharger.
-3. Si le navigateur affiche un avertissement, choisissez **« Conserver »**.
+1. Ouvrez ce lien : **https://github.com/tomascdj0903/optimiseur-onedrive/raw/main/release/OptimiseurOneDrive.exe**. Le téléchargement démarre tout seul.
+2. Si le navigateur affiche un avertissement, choisissez **« Conserver »**.
 
 Rien à installer : c'est un programme unique. Il se met à jour tout seul ensuite.
 

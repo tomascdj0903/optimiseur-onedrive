@@ -206,7 +206,7 @@ func (a *App) checkUpdate(exe string) {
 		return
 	}
 	a.out.Dim("  Recherche d'une mise à jour…")
-	u := &update.Updater{API: "https://api.github.com/repos/" + updateRepo, AssetName: assetName}
+	u := &update.Updater{Manifest: "https://raw.githubusercontent.com/" + updateRepo + "/main/release/latest.json", AssetName: assetName}
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	rel, err := u.Latest(ctx)
 	cancel()

@@ -15,11 +15,8 @@ import (
 func server(t *testing.T, exe []byte, hash string) *httptest.Server {
 	mux := http.NewServeMux()
 	var srv *httptest.Server
-	mux.HandleFunc("/releases/latest", func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(Release{Tag: "v1.2.0", Assets: []Asset{
-			{Name: "OptimiseurOneDrive.exe", URL: srv.URL + "/exe"},
-			{Name: "OptimiseurOneDrive.exe.sha256", URL: srv.URL + "/sha"},
-		}})
+	mux.HandleFunc("/latest.json", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(Manifest{Version: "1.2.0", Exe: srv.URL + "/exe", SHA256: hash})
 	})
 	mux.HandleFunc("/exe", func(w http.ResponseWriter, r *http.Request) { w.Write(exe) })
 	mux.HandleFunc("/sha", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(hash + "  OptimiseurOneDrive.exe\n")) })
@@ -45,9 +42,9 @@ func TestInstallVerified(t *testing.T) {
 	dir := t.TempDir()
 	exe := filepath.Join(dir, "OptimiseurOneDrive.exe")
 	os.WriteFile(exe, []byte("ANCIEN"), 0o755)
-	u := &Updater{API: srv.URL, AssetName: "OptimiseurOneDrive.exe"}
+	u := &Updater{Manifest: srv.URL + "/latest.json", AssetName: "OptimiseurOneDrive.exe"}
 	rel, err := u.Latest(context.Background())
-	if err != nil || rel.Tag != "v1.2.0" {
+	if err != nil || rel.Tag != "1.2.0" {
 		t.Fatal(rel, err)
 	}
 	if err := u.Install(context.Background(), rel, exe, nil); err != nil {
@@ -68,7 +65,7 @@ func TestInstallRejectsBadHash(t *testing.T) {
 	dir := t.TempDir()
 	exe := filepath.Join(dir, "OptimiseurOneDrive.exe")
 	os.WriteFile(exe, []byte("ANCIEN"), 0o755)
-	u := &Updater{API: srv.URL, AssetName: "OptimiseurOneDrive.exe"}
+	u := &Updater{Manifest: srv.URL + "/latest.json", AssetName: "OptimiseurOneDrive.exe"}
 	rel, _ := u.Latest(context.Background())
 	if err := u.Install(context.Background(), rel, exe, nil); err == nil {
 		t.Fatal("empreinte incorrecte acceptée")
