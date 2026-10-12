@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Suivi OneDrive</title>
+<style>
+:root{
+  --bg:#0f1115;--panel:#161a21;--panel2:#1c2129;--line:#262c36;--text:#e6e9ef;--muted:#8b93a1;
+  --accent:#5aa9ff;--ok:#4cc38a;--warn:#f0b429;--err:#ef5b5b;--est:#c084fc;--title:#67d4e8;--input:#f2a65a;
+  --mono:ui-monospace,"Cascadia Mono","Consolas","SF Mono",Menlo,monospace;
+  --sans:"Segoe UI Variable","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){--bg:#f4f5f7;--panel:#ffffff;--panel2:#f7f8fa;--line:#e3e6eb;--text:#1b1f24;--muted:#646c78;
+  --accent:#1f6feb;--ok:#1a7f4b;--warn:#a46200;--err:#c62828;--est:#7c3aed;--title:#0b7285;--input:#b4530e}
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--sans)}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.2px}
+header .sub{color:var(--muted);font-size:12.5px}
+header .sp{flex:1}
+button{font:inherit;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 11px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.app{display:grid;grid-template-columns:300px 1fr;height:calc(100% - 55px)}
+aside{border-right:1px solid var(--line);overflow:auto;background:var(--panel)}
+aside .head{padding:12px 14px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between}
+.sess{padding:11px 14px;border-top:1px solid var(--line);cursor:pointer}
+.sess:hover{background:var(--panel2)}
+.sess.sel{background:var(--panel2);box-shadow:inset 3px 0 0 var(--accent)}
+.sess .t{display:flex;align-items:center;gap:8px;font-weight:600}
+.sess .m{color:var(--muted);font-size:12px;margin-top:2px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.live{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.code{font-family:var(--mono);font-size:12px;padding:1px 6px;border:1px solid var(--line);border-radius:5px;color:var(--muted)}
+main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.tabs{display:flex;gap:4px;padding:10px 16px 0;border-bottom:1px solid var(--line);align-items:flex-end}
+.tab{padding:8px 12px;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;cursor:pointer;color:var(--muted)}
+.tab.on{color:var(--text);background:var(--panel);border-color:var(--line);margin-bottom:-1px}
+.tabs .sp{flex:1}
+.tabs label{color:var(--muted);font-size:12.5px;padding-bottom:8px;display:flex;gap:6px;align-items:center}
+.pane{flex:1;overflow:auto;min-height:0}
+#console{font:12.5px/1.5 var(--mono);padding:14px 18px;white-space:pre-wrap;word-break:break-word;background:var(--panel)}
+#console .ln{display:flex;gap:12px}
+#console .ts{color:var(--muted);flex:none;user-select:none}
+.l-ok{color:var(--ok)}.l-attention{color:var(--warn)}.l-erreur{color:var(--err)}.l-titre{color:var(--title);font-weight:700}
+.l-estimation{color:var(--est)}.l-saisie{color:var(--input)}.l-progression{color:var(--muted)}
+.empty{color:var(--muted);padding:40px;text-align:center}
+.wrap{padding:18px;max-width:1100px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.card .k{color:var(--muted);font-size:12px}
+.card .v{font-size:22px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
+.card .n{font-size:11.5px;color:var(--muted);margin-top:2px}
+.card.ok .v{color:var(--ok)}.card.warn .v{color:var(--warn)}.card.est .v{color:var(--est)}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:18px}
+th,td{text-align:left;padding:8px 10px;border-top:1px solid var(--line);font-size:13px;vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;border-top:none;background:var(--panel2)}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{font-size:11.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.r-faible{color:var(--ok)}.r-modéré{color:var(--warn)}.r-élevé{color:var(--err)}
+h2{font-size:14px;margin:4px 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+pre.report{font:12px/1.5 var(--mono);white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.login{max-width:420px;margin:12vh auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+.login input{width:100%;font:14px var(--mono);padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);margin:12px 0}
+.err{color:var(--err);font-size:13px;min-height:18px}
+@media (max-width:760px){.app{grid-template-columns:1fr}aside{max-height:32vh;border-right:none;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Suivi OneDrive</h1><span class="sub">console des diagnostics partagés · lecture seule</span>
+  <span class="sp"></span>
+  <span id="status" class="sub"></span>
+  <button id="logout" hidden>Changer de clé</button>
+</header>
+<div id="login" class="login" hidden>
+  <h1 style="font-size:17px;margin:0 0 6px">Accès privé</h1>
+  <div class="muted">Saisissez votre clé de suivi. Elle reste enregistrée uniquement dans ce navigateur.</div>
+  <input id="key" placeholder="odo-…" autocomplete="off" spellcheck="false">
+  <div class="err" id="loginErr"></div>
+  <button class="primary" id="go">Ouvrir</button>
+</div>
+<div id="appRoot" class="app" hidden>
+  <aside>
+    <div class="head"><span>Sessions</span><span id="count"></span></div>
+    <div id="sessions"></div>
+  </aside>
+  <main>
+    <div class="tabs">
+      <div class="tab on" data-tab="console">Console en direct</div>
+      <div class="tab" data-tab="summary">Synthèse</div>
+      <div class="tab" data-tab="report">Rapport complet</div>
+      <span class="sp"></span>
+      <label><input type="checkbox" id="follow" checked> suivre</label>
+    </div>
+    <div class="pane" id="p-console"><div id="console"><div class="empty">Choisissez une session à gauche.</div></div></div>
+    <div class="pane" id="p-summary" hidden><div class="wrap" id="summary"></div></div>
+    <div class="pane" id="p-report" hidden><div class="wrap" id="report"></div></div>
+  </main>
+</div>
+<script>
+const SB_URL = "https://vnnmagstargwettizywm.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZubm1hZ3N0YXJnd2V0dGl6eXdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1Mzk5NzYsImV4cCI6MjEwNzExNTk3Nn0.agiiBLjwTdaJznJy-zQmy4eDEhvO7YHcXcdCgCBEl4w";
+const $ = s => document.querySelector(s);
+let KEY = "";
+try { KEY = localStorage.getItem("odo-key") || ""; } catch (e) {}
+let current = null, lastId = 0, logTimer = null, repTimer = null, reports = [];
+
+async function rpc(fn, body) {
+  const r = await fetch(SB_URL + "/rest/v1/rpc/" + fn, {method: "POST",
+    headers: {"Content-Type": "application/json", apikey: SB_KEY, Authorization: "Bearer " + SB_KEY},
+    body: JSON.stringify(body)});
+  if (!r.ok) { const t = await r.text(); throw new Error(t.includes("acces refuse") ? "Clé incorrecte" : "Erreur " + r.status); }
+  return r.json();
+}
+function bytes(n) {
+  n = Number(n || 0); const u = ["octets","Ko","Mo","Go","To"]; let i = 0;
+  while (Math.abs(n) >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  if (i === 0) return n + " octets";
+  return (n >= 100 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",") + " " + u[i];
+}
+function ago(d) {
+  const s = (Date.now() - new Date(d)) / 1000;
+  if (s < 60) return "il y a " + Math.max(1, Math.round(s)) + " s";
+  if (s < 3600) return "il y a " + Math.round(s / 60) + " min";
+  if (s < 86400) return "il y a " + Math.round(s / 3600) + " h";
+  return new Date(d).toLocaleString("fr-FR");
+}
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const codeOf = id => id.replace(/-/g, "").slice(0, 6).toUpperCase();
+
+function showLogin(msg) {
+  $("#appRoot").hidden = true; $("#logout").hidden = true; $("#login").hidden = false;
+  $("#loginErr").textContent = msg || ""; $("#key").value = KEY; $("#key").focus();
+}
+async function start() {
+  try { await loadSessions(); } catch (e) { showLogin(e.message); return; }
+  $("#login").hidden = true; $("#appRoot").hidden = false; $("#logout").hidden = false;
+  setInterval(() => loadSessions().catch(() => {}), 5000);
+}
+$("#go").onclick = () => { KEY = $("#key").value.trim(); try { localStorage.setItem("odo-key", KEY); } catch (e) {} start(); };
+$("#key").addEventListener("keydown", e => { if (e.key === "Enter") $("#go").click(); });
+$("#logout").onclick = () => { try { localStorage.removeItem("odo-key"); } catch (e) {} KEY = ""; location.reload(); };
+
+async function loadSessions() {
+  const list = await rpc("odo_view_sessions", {p_key: KEY});
+  $("#count").textContent = list.length;
+  $("#status").textContent = "actualisé " + new Date().toLocaleTimeString("fr-FR");
+  $("#sessions").innerHTML = list.length ? list.map(s => {
+    const live = Date.now() - new Date(s.last_seen) < 20000;
+    return `<div class="sess ${current === s.id ? "sel" : ""}" data-id="${s.id}">
+      <div class="t"><span class="dot ${live ? "live" : ""}"></span>${esc(s.machine || "PC")} <span class="code">${codeOf(s.id)}</span></div>
+      <div class="m">${esc(s.os_info || "")} · v${esc(s.app_version || "?")}${s.masked ? " · noms masqués" : ""}</div>
+      <div class="m">${live ? "en direct" : ago(s.last_seen)} · ${s.log_count} lignes · ${s.report_count} rapport(s)</div></div>`;
+  }).join("") : `<div class="empty">Aucune session pour l'instant.</div>`;
+  document.querySelectorAll(".sess").forEach(el => el.onclick = () => select(el.dataset.id));
+}
+async function select(id) {
+  current = id; lastId = 0; $("#console").innerHTML = "";
+  document.querySelectorAll(".sess").forEach(el => el.classList.toggle("sel", el.dataset.id === id));
+  clearInterval(logTimer); clearInterval(repTimer);
+  await pullLogs(); await loadReports();
+  logTimer = setInterval(() => { pullLogs().catch(() => {}); }, 2000);
+  repTimer = setInterval(() => { if (current === id) loadReports().catch(() => {}); }, 15000);
+}
+async function pullLogs() {
+  if (!current) return;
+  const id = current;
+  const rows = await rpc("odo_view_logs", {p_key: KEY, p_session: id, p_after: lastId});
+  if (id !== current || !rows.length) return;
+  const frag = document.createDocumentFragment();
+  for (const r of rows) {
+    lastId = Math.max(lastId, r.id);
+    const d = document.createElement("div"); d.className = "ln";
+    d.innerHTML = `<span class="ts">${new Date(r.ts).toLocaleTimeString("fr-FR")}</span><span class="l-${esc(r.level)}">${esc(r.level === "saisie" ? "› " + r.line : r.line)}</span>`;
+    frag.appendChild(d);
+  }
+  $("#console").appendChild(frag);
+  if ($("#follow").checked) $("#p-console").scrollTop = $("#p-console").scrollHeight;
+}
+async function loadReports() {
+  reports = await rpc("odo_view_reports", {p_key: KEY, p_session: current});
+  renderSummary(); renderReport();
+}
+function renderSummary() {
+  const r = reports[0];
+  if (!r) { $("#summary").innerHTML = `<div class="empty">Aucun rapport reçu pour cette session.</div>`; return; }
+  const a = r.summary || {}, t = a.tot || {};
+  const card = (k, v, n, cls) => `<div class="card ${cls || ""}"><div class="k">${k}</div><div class="v">${v}</div><div class="n">${n || ""}</div></div>`;
+  let h = `<div class="bar muted">Rapport « ${esc(r.kind)} » reçu ${ago(r.created_at)} · Windows : ${esc(a.os?.name || "")} ${esc(a.os?.version || "")} · OneDrive ${esc(a.od?.ver || "?")} (${esc(a.od?.run || "?")})</div>`;
+  h += `<div class="cards">${card("OneDrive sur le disque", bytes(t.activeAlloc), "mesuré")}
+    ${card("Libérable sans perte", bytes(t.freeable), "estimation", "est")}
+    ${card("Téléchargés (non épinglés)", bytes(t.local), "libérables tout de suite", "ok")}
+    ${card("Toujours conservés", bytes(t.pinned), "épinglés", "warn")}
+    ${card("Non gérés à la demande", bytes(t.notCloud), "")}
+    ${card("Anciens dossiers / emplacements", bytes((t.orphan || 0) + (t.legacy || 0)), "non synchronisés", "warn")}
+    ${card("Corbeille", bytes(t.recycle), "")}
+    ${card("En ligne uniquement", (t.onlineFiles || 0).toLocaleString("fr-FR") + " fichiers", bytes(t.onlineLogical) + " dans le cloud")}</div>`;
+  if (a.vol?.length) {
+    h += `<h2>Disques</h2><table><tr><th>Lecteur</th><th>Type</th><th>Total</th><th>Libre</th></tr>` +
+      a.vol.map(v => `<tr><td>${esc(v.root)}${v.system ? " (système)" : ""}</td><td>${esc(v.type)} ${esc(v.fileSystem)}</td><td class="num">${bytes(v.total)}</td><td class="num">${bytes(v.free)}</td></tr>`).join("") + `</table>`;
+  }
+  if (a.alert?.length) h += `<h2>Alertes</h2><table>` + a.alert.map(x => `<tr><td><span class="pill">${esc(x.level)}</span></td><td>${esc(x.text)}</td></tr>`).join("") + `</table>`;
+  if (a.tgt?.length) {
+    h += `<h2>Dossiers analysés</h2><table><tr><th>Dossier</th><th>Type</th><th>Disque</th><th>Libérable</th><th>Réglage</th><th>Gérés à la demande</th></tr>` +
+      a.tgt.map(x => { const s = x.agg?.states || []; const fr = (s[2]?.alloc || 0) + (s[3]?.alloc || 0);
+        return `<tr><td>${esc(x.label)}<div class="muted">${esc(x.path)}</div></td><td>${esc(x.kind)}</td><td class="num">${bytes(x.agg?.alloc)}</td><td class="num">${bytes(fr)}</td><td>${esc(x.pin)}</td><td class="num">${Math.round((x.cloud || 0) * 100)} %</td></tr>`; }).join("") + `</table>`;
+  }
+  if (a.rec?.length) h += `<h2>Recommandations</h2><table><tr><th>#</th><th>Identifiant</th><th>Gain</th><th>Nature</th><th>Risque</th></tr>` +
+    a.rec.map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.id)}</td><td class="num">${bytes(x.gain)}</td><td>${esc(x.kind)}</td><td class="r-${esc(x.risk)}">${esc(x.risk)}</td></tr>`).join("") + `</table>`;
+  if (a.fold?.length) h += `<h2>Dossiers à libérer en priorité</h2><table><tr><th>Dossier</th><th>Libérable</th><th>Épinglé</th><th>Ancien (&gt;1 an)</th></tr>` +
+    a.fold.slice(0, 20).map(x => `<tr><td>${esc(x.p)}</td><td class="num">${bytes(x.free)}</td><td class="num">${bytes(x.pin)}</td><td class="num">${bytes(x.old)}</td></tr>`).join("") + `</table>`;
+  if (a.scan) h += `<div class="muted">Analyse : ${a.scan.files?.toLocaleString("fr-FR")} fichiers, ${a.scan.err} erreur(s), ${Math.round(a.scan.sec || 0)} s${a.scan.cancel ? " — ANNULÉE (partiel)" : ""}.</div>`;
+  $("#summary").innerHTML = h;
+}
+function renderReport() {
+  const r = reports[0];
+  if (!r) { $("#report").innerHTML = `<div class="empty">Aucun rapport reçu pour cette session.</div>`; return; }
+  $("#report").innerHTML = `<div class="bar"><button id="copy" class="primary">Copier le rapport</button><button id="dl">Télécharger (.txt)</button>
+    <span class="muted">${reports.length} rapport(s) · dernier ${ago(r.created_at)}</span></div><pre class="report" id="rtext"></pre>`;
+  $("#rtext").textContent = r.text_report || "";
+  $("#copy").onclick = async () => { try { await navigator.clipboard.writeText(r.text_report || ""); $("#copy").textContent = "Copié ✓"; } catch (e) { $("#copy").textContent = "Copie impossible"; } };
+  $("#dl").onclick = () => { const b = new Blob(["﻿" + (r.text_report || "")], {type: "text/plain;charset=utf-8"});
+    const u = URL.createObjectURL(b); const l = document.createElement("a"); l.href = u; l.download = "Diagnostic-" + codeOf(current) + ".txt"; l.click(); URL.revokeObjectURL(u); };
+}
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === t));
+  for (const p of ["console", "summary", "report"]) $("#p-" + p).hidden = p !== t.dataset.tab;
+});
+KEY ? start() : showLogin();
+</script>
+</body>
+</html>
