@@ -123,3 +123,6 @@ func (genSys) SamePath(a, b string) bool { return filepath.Clean(a) == filepath.
 func ExposePlaceholders() string { return "sans objet" }
 func SetupConsole(string) bool   { return os.Getenv("TERM") != "" && os.Getenv("NO_COLOR") == "" }
 func LongPath(p string) string   { return p }
+
+// OpenAppWindow : sans objet hors Windows (l'adresse est affichée dans la console).
+func OpenAppWindow(url string) string { return "" }

@@ -1,6 +1,6 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "exe": "https://raw.githubusercontent.com/tomascdj0903/optimiseur-onedrive/main/release/OptimiseurOneDrive.exe",
-  "sha256": "e09e1e328e7fe71308e89ed74970f0f3bb59949649f1c428fa3dbfb744e22bf9",
-  "notes": "Première version."
+  "sha256": "e3722171e04cf1f8597a77cb0b1d982e8e96d758a6a8e71ca6fe045c61bb5683",
+  "notes": "Interface graphique guidée."
 }

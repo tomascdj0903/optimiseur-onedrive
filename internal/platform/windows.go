@@ -700,3 +700,34 @@ func (winSys) BeginBackground() func() {
 func (winSys) SamePath(a, b string) bool {
 	return strings.EqualFold(filepath.Clean(a), filepath.Clean(b))
 }
+
+// OpenAppWindow ouvre l'interface dans une fenêtre d'application Microsoft Edge
+// (sans barre d'adresse), sinon dans le navigateur par défaut.
+func OpenAppWindow(url string) string {
+	edge := regString(hkeyLocalMachine, `SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe`, "")
+	if edge == "" {
+		edge = regString(hkeyCurrentUser, `SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe`, "")
+	}
+	if edge == "" {
+		for _, c := range []string{
+			filepath.Join(os.Getenv("ProgramFiles(x86)"), `Microsoft\Edge\Application\msedge.exe`),
+			filepath.Join(os.Getenv("ProgramFiles"), `Microsoft\Edge\Application\msedge.exe`),
+		} {
+			if _, err := os.Stat(c); err == nil {
+				edge = c
+				break
+			}
+		}
+	}
+	if edge != "" {
+		cmd := exec.Command(edge, "--app="+url, "--window-size=1280,860", "--no-first-run")
+		if err := cmd.Start(); err == nil {
+			go cmd.Wait()
+			return "fenêtre Microsoft Edge"
+		}
+	}
+	if shellOpen(url, "") == nil {
+		return "navigateur par défaut"
+	}
+	return ""
+}

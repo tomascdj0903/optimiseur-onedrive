@@ -64,6 +64,10 @@ type App struct {
 
 	cancelMu sync.Mutex
 	cancel   context.CancelFunc
+
+	noShare bool
+	mu      sync.Mutex // protège res/diag/dupRes/lastRun en mode graphique
+	gui *guiState
 }
 
 func main() {
@@ -71,6 +75,7 @@ func main() {
 	readOnly := flag.Bool("lecture-seule", false, "interdit toute modification")
 	noUpdate := flag.Bool("sans-maj", false, "ne pas rechercher de mise à jour")
 	noShare := flag.Bool("sans-partage", false, "ne pas proposer le partage en direct")
+	textMode := flag.Bool("console", false, "interface texte uniquement (sans fenêtre graphique)")
 	flag.Parse()
 
 	color := P.SetupConsole("Optimiseur OneDrive " + version)
@@ -88,13 +93,10 @@ func main() {
 	if exe, err := update.ExePath(); err == nil {
 		update.Cleanup(exe)
 		if !*noUpdate {
-			a.checkUpdate(exe)
+			a.checkUpdate(exe, !*textMode && !*diagOnly)
 		}
 	}
-	a.intro(*diagOnly)
-	if !*noShare {
-		a.askShare()
-	}
+	a.noShare = *noShare
 	a.mgr = &actions.Manager{FS: a.fs, Same: a.same, Roots: a.activeRoots, ReadOnly: a.readOnly,
 		JournalDir: filepath.Join(a.dataDir, "operations"),
 		OneDriveRunning: func() (bool, bool) {
@@ -112,6 +114,16 @@ func main() {
 			return f
 		}}
 
+	if !*textMode && !*diagOnly {
+		a.out.Blank()
+		a.out.Ok("L'analyse est en LECTURE SEULE : rien n'est modifié sans votre confirmation écrite.")
+		a.runGUI()
+		return
+	}
+	a.intro(*diagOnly)
+	if !*noShare {
+		a.askShare()
+	}
 	if *diagOnly {
 		a.Ask("Appuyez sur Entrée pour lancer l'analyse (lecture seule)…")
 		a.runScan()
@@ -122,6 +134,11 @@ func main() {
 		a.Pause()
 		a.quit(0)
 	}
+	a.consoleFlow()
+}
+
+// consoleFlow : parcours entièrement en mode texte.
+func (a *App) consoleFlow() {
 	a.Ask("Appuyez sur Entrée pour lancer l'analyse (lecture seule)…")
 	a.runScan()
 	a.showSummary()
@@ -201,7 +218,7 @@ func (a *App) banner() {
 	a.out.Dim("  %s %s (build %d) · %s", osi.Name, osi.Version, osi.Build, runtime.GOARCH)
 }
 
-func (a *App) checkUpdate(exe string) {
+func (a *App) checkUpdate(exe string, auto bool) {
 	if strings.HasSuffix(version, "-dev") {
 		return
 	}
@@ -219,7 +236,7 @@ func (a *App) checkUpdate(exe string) {
 		return
 	}
 	a.out.Ok("  Nouvelle version disponible : %s (vous avez %s).", rel.Tag, version)
-	if !a.YesNo("Installer la mise à jour maintenant ?", true) {
+	if !auto && !a.YesNo("Installer la mise à jour maintenant ?", true) {
 		return
 	}
 	var last time.Time
@@ -289,6 +306,14 @@ func (a *App) askShare() {
 
 func (a *App) enableShare() {
 	masked := a.YesNo("Masquer les noms de vos dossiers et fichiers dans ce partage ?", false)
+	if err := a.startShare(masked); err != nil {
+		a.out.Err("Le partage n'a pas pu démarrer (%v).", err)
+		a.out.Line("Pas d'inquiétude : vous pourrez exporter le rapport dans un fichier (menu 8).")
+	}
+}
+
+// startShare ouvre la session de partage (après accord de l'utilisateur).
+func (a *App) startShare(masked bool) error {
 	a.mask.Enabled = masked
 	c := share.New(shareURL, shareKey)
 	osi := a.sys.OSInfo()
@@ -301,13 +326,12 @@ func (a *App) enableShare() {
 		map[string]any{"phcm": a.phcm, "readOnly": a.readOnly, "code": c.Code})
 	cancel()
 	if err != nil {
-		a.out.Err("Le partage n'a pas pu démarrer (%v).", err)
-		a.out.Line("Pas d'inquiétude : vous pourrez exporter le rapport dans un fichier (menu 8).")
-		return
+		return err
 	}
 	a.share = c
 	a.out.share = c
 	a.out.Ok("Partage activé. Code de session à communiquer : %s", a.out.C(cBold, c.Code))
+	return nil
 }
 
 func (a *App) activeRoots() []string {

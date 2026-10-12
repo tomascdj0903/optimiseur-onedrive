@@ -20,7 +20,8 @@ import (
 
 // ---------------------------------------------------------------- analyse
 
-func (a *App) runScan() {
+// detect : étape 1 (configuration OneDrive et cibles), journalisée dans la console.
+func (a *App) detect() {
 	a.out.Blank()
 	a.out.Title("ÉTAPE 1 — Détection de la configuration OneDrive")
 	od := a.sys.OneDrive()
@@ -64,27 +65,47 @@ func (a *App) runScan() {
 	}
 	a.env = analysis.Env{AppVersion: version, OS: a.sys.OSInfo(), Volumes: vols, OneDrive: od, Placeholders: a.phcm,
 		Known: known, Recycle: recycle, Discovery: a.disc, Same: a.same, Windows: a.sys.OSInfo().Windows}
-
 	a.out.Blank()
 	a.out.Title("ÉTAPE 2 — Mesure des dossiers (lecture seule)")
-	a.out.Dim("Cela peut prendre quelques minutes pour des centaines de milliers de fichiers. Ctrl+C pour annuler.")
+	a.out.Dim("Cela peut prendre quelques minutes pour des centaines de milliers de fichiers.")
+}
+
+// measure : étape 2, parcours en lecture seule (bloquant).
+func (a *App) measure(ctx context.Context, tr *scan.Tracker) *scan.Result {
 	opts := scan.DefaultOptions()
 	opts.ComputerName = a.sys.ComputerName()
+	end := a.sys.BeginBackground()
+	defer end()
+	return scan.Run(ctx, a.fs, a.disc.Targets, opts, tr, func(p string) string { return filepath.VolumeName(p) })
+}
+
+// finish : diagnostic à partir du résultat.
+func (a *App) finish(r *scan.Result) {
+	if r.Canceled {
+		a.out.Warn("Analyse annulée : les résultats sont PARTIELS.")
+	}
+	a.out.Ok("Analyse terminée : %s fichiers et %s dossiers en %s ; %s élément(s) illisible(s).", F.Int(r.Files), F.Int(r.Dirs),
+		F.Duration(r.Finished.Sub(r.Started)), F.Int(r.ErrorCount))
+	d := analysis.Diagnose(a.env, r)
+	a.mu.Lock()
+	a.res, a.diag, a.dupRes = r, d, nil
+	a.mu.Unlock()
+}
+
+func (a *App) runScan() {
+	a.detect()
 	tr := &scan.Tracker{}
+	var res *scan.Result
 	a.withCancel(func(ctx context.Context) {
 		done := make(chan *scan.Result, 1)
-		go func() {
-			end := a.sys.BeginBackground()
-			defer end()
-			done <- scan.Run(ctx, a.fs, a.disc.Targets, opts, tr, func(p string) string { return filepath.VolumeName(p) })
-		}()
+		go func() { done <- a.measure(ctx, tr) }()
 		tick := time.NewTicker(250 * time.Millisecond)
 		defer tick.Stop()
 		lastShared := time.Now()
 		for {
 			select {
 			case r := <-done:
-				a.res = r
+				res = r
 				return
 			case <-tick.C:
 				p := tr.Snapshot()
@@ -98,16 +119,7 @@ func (a *App) runScan() {
 			}
 		}
 	})
-	r := a.res
-	if r.Canceled {
-		a.out.Warn("Analyse annulée : les résultats ci-dessous sont PARTIELS.")
-	}
-	a.out.Ok("Analyse terminée : %s fichiers et %s dossiers en %s ; %s élément(s) illisible(s).", F.Int(r.Files), F.Int(r.Dirs),
-		F.Duration(r.Finished.Sub(r.Started)), F.Int(r.ErrorCount))
-	a.diag = analysis.Diagnose(a.env, r)
-	if a.dupRes != nil {
-		a.dupRes = nil
-	}
+	a.finish(res)
 }
 
 func orDash(s string) string {

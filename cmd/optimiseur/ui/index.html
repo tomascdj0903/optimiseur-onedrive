@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Optimiseur OneDrive</title>
+<style>
+:root{
+  --bg:#f3f4f7;--surface:#ffffff;--surface2:#f7f8fb;--line:#e4e7ee;--text:#1a1d24;--muted:#5f6675;--soft:#8a91a0;
+  --accent:#2563eb;--accent-soft:#e8efff;--ok:#15803d;--ok-soft:#e7f6ec;--warn:#b45309;--warn-soft:#fdf3e2;
+  --err:#c2410c;--err-soft:#fdece4;--est:#7c3aed;--est-soft:#f1eafe;--cloud:#0ea5e9;
+  --c-local:#22a06b;--c-pinned:#e2a03f;--c-notcloud:#e5534b;--c-other:#c9ced8;
+  --radius:14px;--shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+  --font:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  --display:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#111318;--surface:#191c22;--surface2:#20242c;--line:#2a2f39;--text:#e8eaef;--muted:#a2a9b6;--soft:#7b8291;
+  --accent:#6ea0ff;--accent-soft:#1f2a44;--ok:#4ade80;--ok-soft:#163020;--warn:#fbbf24;--warn-soft:#33270f;
+  --err:#fb8a5c;--err-soft:#3a1d12;--est:#c4a5ff;--est-soft:#2a2140;--c-other:#3a404c;--shadow:none}
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14.5px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:8px 14px}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.big{padding:13px 26px;font-size:16px;border-radius:12px}
+button.link{border:none;background:none;color:var(--accent);padding:0}
+button.ghost{background:transparent}
+input[type=text]{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--text);width:100%}
+input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent);cursor:pointer}
+.app{display:grid;grid-template-columns:232px 1fr;height:100%}
+nav{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px}
+.brand{display:flex;gap:10px;align-items:center;padding:4px 8px 18px}
+.brand svg{flex:none}
+.brand b{font:600 15px/1.2 var(--display)}
+.brand small{display:block;color:var(--soft);font-size:11.5px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--muted);text-decoration:none;cursor:pointer;margin-bottom:2px}
+.nav a:hover{background:var(--surface2);color:var(--text)}
+.nav a.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav a.off{opacity:.45;pointer-events:none}
+.nav svg{width:18px;height:18px;flex:none}
+.navfoot{margin-top:auto;padding:10px 8px 0;font-size:12px;color:var(--soft);display:flex;flex-direction:column;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:var(--surface2);color:var(--muted)}
+.chip .d{width:7px;height:7px;border-radius:50%;background:var(--soft)}
+.chip.live .d{background:var(--ok)}
+main{overflow:auto;position:relative}
+.page{max-width:1080px;margin:0 auto;padding:30px 34px 120px}
+h1{font:600 26px/1.25 var(--display);margin:0 0 6px;letter-spacing:-.2px}
+h2{font:600 17px/1.3 var(--display);margin:30px 0 12px}
+.lead{color:var(--muted);margin:0 0 22px;max-width:720px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 20px}
+.grid{display:grid;gap:14px}
+.g3{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr 1fr}
+@media (max-width:900px){.g3,.g2{grid-template-columns:1fr}.app{grid-template-columns:1fr}nav{display:none}}
+.kpi .k{color:var(--muted);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kpi .v{font:600 30px/1.15 var(--display);margin-top:6px;font-variant-numeric:tabular-nums}
+.kpi .n{color:var(--soft);font-size:12.5px;margin-top:4px}
+.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;letter-spacing:.2px}
+.t-mesure{background:var(--accent-soft);color:var(--accent)}
+.t-estim{background:var(--est-soft);color:var(--est)}
+.t-pot{background:var(--warn-soft);color:var(--warn)}
+.t-ok{background:var(--ok-soft);color:var(--ok)}
+.t-warn{background:var(--warn-soft);color:var(--warn)}
+.t-err{background:var(--err-soft);color:var(--err)}
+.t-mute{background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
+.stack{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--c-other);margin:14px 0 12px}
+.stack span{height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend b{color:var(--text);font-weight:600;margin-left:4px}
+.disk{display:grid;grid-template-columns:150px 1fr 220px;gap:14px;align-items:center;padding:8px 0}
+.meter{height:10px;border-radius:6px;background:var(--surface2);border:1px solid var(--line);overflow:hidden}
+.meter span{display:block;height:100%;background:var(--accent)}
+.meter.full span{background:var(--err)}
+.muted{color:var(--muted)}.soft{color:var(--soft)}.small{font-size:12.5px}
+.cause{display:grid;grid-template-columns:28px 1fr auto;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.cause:first-child{border-top:none}
+.cause .num{width:26px;height:26px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;font-weight:600;font-size:13px;color:var(--muted)}
+.cause .t{font-weight:600}.cause .x{color:var(--muted);font-size:13.5px;margin-top:2px}
+.cause .b{font:600 16px var(--display);white-space:nowrap}
+.alert{display:flex;gap:10px;padding:11px 14px;border-radius:11px;margin-bottom:8px;font-size:13.5px}
+.alert.probleme{background:var(--err-soft);color:var(--err)}
+.alert.attention{background:var(--warn-soft);color:var(--warn)}
+.alert.info{background:var(--accent-soft);color:var(--accent)}
+.rec{display:grid;grid-template-columns:1fr auto;gap:6px 16px;padding:16px 18px;margin-bottom:10px}
+.rec .tt{font-weight:600;font-size:15px}
+.rec .pb{color:var(--muted);font-size:13.5px}
+.rec .side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.rec .gain{font:600 18px var(--display)}
+.rec details{grid-column:1/-1;margin-top:6px}
+.rec summary{cursor:pointer;color:var(--accent);font-size:13px;list-style:none}
+.rec summary::-webkit-details-marker{display:none}
+.rec dl{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;margin:12px 0 4px;font-size:13.5px}
+.rec dt{color:var(--soft)}.rec dd{margin:0}
+.rec ol{margin:6px 0 0;padding-left:20px}
+.hero{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:stretch}
+@media (max-width:900px){.hero{grid-template-columns:1fr}}
+.hero .card{padding:24px}
+.steps{list-style:none;padding:0;margin:16px 0 22px;display:flex;flex-direction:column;gap:12px}
+.steps li{display:flex;gap:12px;align-items:flex-start}
+.steps .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-size:13px}
+.safe{display:flex;gap:10px;align-items:flex-start;background:var(--ok-soft);color:var(--ok);padding:12px 14px;border-radius:11px;font-size:13.5px}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+.switch:first-of-type{border-top:none}
+.toggle{position:relative;width:44px;height:24px;flex:none}
+.toggle input{opacity:0;width:0;height:0}
+.toggle span{position:absolute;inset:0;background:var(--c-other);border-radius:24px;transition:.15s;cursor:pointer}
+.toggle span:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+.toggle input:checked+span{background:var(--accent)}
+.toggle input:checked+span:before{transform:translateX(20px)}
+.code{font:700 22px/1 ui-monospace,"Cascadia Mono",Consolas,monospace;letter-spacing:3px;color:var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:10px;display:inline-block;margin-top:6px}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;font-weight:600;color:var(--soft);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:default}
+th.sort{cursor:pointer}th.sort:hover{color:var(--text)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th.num{text-align:right}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--surface2)}
+.name{display:flex;align-items:center;gap:9px;min-width:0}
+.name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.path{font-size:12px;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:560px}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:12px;font-size:13.5px}
+.crumbs a{color:var(--accent);cursor:pointer}
+.bar-inline{height:6px;border-radius:4px;background:var(--surface2);overflow:hidden;width:90px;display:inline-block;vertical-align:middle;margin-left:8px}
+.bar-inline span{display:block;height:100%;background:var(--c-local)}
+.selbar{position:fixed;left:232px;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:14px 34px;display:flex;align-items:center;gap:16px;box-shadow:0 -6px 20px rgba(0,0,0,.06);z-index:5}
+@media (max-width:900px){.selbar{left:0}}
+.selbar .s{flex:1}
+.selbar b{font:600 18px var(--display)}
+.plan{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+.plan button{border-radius:999px}
+.overlay{position:fixed;inset:0;background:rgba(10,14,22,.45);display:grid;place-items:center;z-index:20;padding:20px}
+.modal{background:var(--surface);border-radius:18px;max-width:640px;width:100%;max-height:90vh;overflow:auto;padding:24px 26px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal h3{font:600 20px var(--display);margin:0 0 6px}
+.modal ul{padding-left:18px;margin:8px 0}
+.modal .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.modal .actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.progress{height:8px;border-radius:5px;background:var(--surface2);overflow:hidden;margin:16px 0}
+.progress span{display:block;height:100%;width:30%;background:var(--accent);border-radius:5px;animation:slide 1.3s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
+.stat{display:flex;gap:26px;flex-wrap:wrap;margin:6px 0 4px}
+.stat div b{display:block;font:600 22px var(--display);font-variant-numeric:tabular-nums}
+.stat div span{font-size:12.5px;color:var(--soft)}
+.cur{font-size:12.5px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.empty{text-align:center;color:var(--muted);padding:50px 20px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:10px;z-index:30;font-size:13.5px;max-width:80vw}
+.group{margin-bottom:12px}
+.group .gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+select{font:inherit;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.toolbar input{max-width:280px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav>
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#2563eb"/><path d="M10.5 22.5h13a4.5 4.5 0 0 0 .4-9 6 6 0 0 0-11.5 1.6A3.8 3.8 0 0 0 10.5 22.5Z" fill="#fff"/><path d="M14 19l2.4 2.4L21 16.8" stroke="#2563eb" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><b>Optimiseur OneDrive</b><small id="ver"></small></div>
+    </div>
+    <div class="nav" id="nav">
+      <a data-p="home" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Accueil</a>
+      <a data-p="diag" class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Diagnostic</a>
+      <a data-p="free" class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 18h10a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.4A3.4 3.4 0 0 0 7 18z"/><path d="M12 11v6M9.5 13.5 12 11l2.5 2.5"/></svg>Libérer de l'espace</a>
+      <a data-p="tips" class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/></svg>Conseils détaillés</a>
+      <a data-p="tree" class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>Dossiers</a>
+      <a data-p="big" class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></svg>Gros fichiers</a>
+      <a data-p="dupes" class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Doublons</a>
+      <a data-p="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Historique</a>
+      <a data-p="report" class="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Rapport</a>
+    </div>
+    <div class="navfoot">
+      <span class="chip" id="shareChip"><span class="d"></span><span id="shareTxt">Partage désactivé</span></span>
+      <button class="ghost small" id="quitBtn">Fermer le programme</button>
+    </div>
+  </nav>
+  <main id="main"></main>
+</div>
+<div id="selbar" class="selbar" hidden>
+  <div class="s"><div class="small muted">Sélection</div><b id="selSum"></b> <span class="muted" id="selCount"></span></div>
+  <button id="selClear" class="ghost">Vider</button>
+  <button id="selGo" class="primary big">Continuer</button>
+</div>
+<div id="modalRoot"></div>
+<script>
+"use strict";
+let TOKEN = new URLSearchParams(location.search).get("t") || "";
+try { if (TOKEN) sessionStorage.setItem("odo-t", TOKEN); else TOKEN = sessionStorage.getItem("odo-t") || ""; } catch (e) {}
+history.replaceState(null, "", "/");
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const J = v => esc(JSON.stringify(v));
+const S = {page: "home", state: null, diag: null, sel: new Map(), tree: {path: ""}, big: null, bigSort: "alloc", bigFilter: "", bigQ: ""};
+
+async function api(path, body) {
+  const opt = {method: body === undefined ? "GET" : "POST", headers: {"X-Token": TOKEN}};
+  if (body !== undefined) { opt.body = JSON.stringify(body); opt.headers["Content-Type"] = "application/json"; }
+  const r = await fetch("/api/" + path, opt);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || ("Erreur " + r.status));
+  return j;
+}
+function bytes(n) {
+  n = Number(n || 0); const u = ["octets","Ko","Mo","Go","To"]; let i = 0;
+  while (Math.abs(n) >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  if (i === 0) return n + " octets";
+  return (Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",") + " " + u[i];
+}
+const int = n => Number(n || 0).toLocaleString("fr-FR");
+const dur = s => { s = Math.round(s || 0); return s < 60 ? s + " s" : Math.floor(s / 60) + " min " + String(s % 60).padStart(2, "0") + " s"; };
+function toast(msg, ms = 3500) {
+  const t = document.createElement("div"); t.className = "toast"; t.textContent = msg; document.body.appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
+const gainTag = k => k === "mesuré" ? `<span class="tag t-mesure">mesuré</span>` : k === "estimation" ? `<span class="tag t-estim">estimation</span>` :
+  k === "potentiel" ? `<span class="tag t-pot">potentiel, à vérifier</span>` : `<span class="tag t-mute">pas de gain direct</span>`;
+const riskTag = r => ({"aucun": `<span class="tag t-mute">sans risque</span>`, "faible": `<span class="tag t-ok">risque faible</span>`,
+  "modéré": `<span class="tag t-warn">risque modéré</span>`, "élevé": `<span class="tag t-err">risque élevé</span>`})[r] || "";
+const pinTag = p => p === "toujours_conserver" ? `<span class="tag t-warn">toujours conservé</span>` : p === "en_ligne" ? `<span class="tag t-mesure">en ligne</span>` : "";
+const stateTag = (k, label) => ({"local": "t-ok", "epingle": "t-warn", "en_ligne": "t-mesure", "non_cloud": "t-mute"})[k] ? `<span class="tag ${({"local":"t-ok","epingle":"t-warn","en_ligne":"t-mesure","non_cloud":"t-mute"})[k]}">${esc(label)}</span>` : esc(label);
+const sep = p => p.includes("\\") ? "\\" : "/";
+function within(p, root) {
+  const a = p.toLowerCase(), b = root.toLowerCase();
+  return a === b || a.startsWith(b.endsWith(sep(root)) ? b : b + sep(root));
+}
+
+// ------------------------------------------------------------ navigation
+document.querySelectorAll("#nav a").forEach(a => a.onclick = () => go(a.dataset.p));
+function go(p) {
+  S.page = p;
+  document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.dataset.p === p));
+  render(); $("#main").scrollTop = 0;
+}
+function unlockNav() {
+  const has = !!(S.state && S.state.hasDiag);
+  document.querySelectorAll("#nav a").forEach(a => { if (!["home","history"].includes(a.dataset.p)) a.classList.toggle("off", !has); });
+}
+function render() {
+  const m = $("#main");
+  const f = {home: pHome, diag: pDiag, free: pFree, tips: pTips, tree: pTree, big: pBig, dupes: pDupes, history: pHistory, report: pReport}[S.page];
+  m.innerHTML = `<div class="page">${f ? f() : ""}</div>`;
+  (bind[S.page] || (() => {}))();
+  updSel();
+}
+const bind = {};
+
+// ------------------------------------------------------------ état et partage
+async function poll() {
+  try {
+    const st = await api("state");
+    const was = S.state; S.state = st;
+    $("#ver").textContent = "version " + st.version;
+    const sh = st.share;
+    $("#shareChip").classList.toggle("live", sh.enabled);
+    $("#shareTxt").textContent = sh.enabled ? "Partage actif · " + sh.code : "Partage désactivé";
+    if (st.hasDiag && (!was || !was.hasDiag || (was.scan.running && !st.scan.running))) {
+      S.diag = await api("diag"); S.big = null; unlockNav();
+      if (S.page === "home") go("diag"); else render();
+    }
+    if (st.scan.running) showScan(st.scan.progress); else hideScan();
+    if (st.dupes && was && was.dupes && was.dupes.running && !st.dupes.running) { S.diag = await api("diag"); if (S.page === "dupes") render(); }
+    if (S.page === "dupes" && st.dupes && st.dupes.running) { const el = $("#dupProg"); if (el) el.textContent = `${int(st.dupes.done)} / ${int(st.dupes.total)} fichiers comparés · ${bytes(st.dupes.bytesRead)} lus · ${dur(st.dupes.elapsed)}`; }
+    if (st.scan.error) toast(st.scan.error, 6000);
+  } catch (e) { $("#shareTxt").textContent = "Programme fermé ?"; }
+  setTimeout(poll, S.state && (S.state.scan.running || (S.state.dupes && S.state.dupes.running) || S.state.op.running) ? 700 : 2500);
+}
+setInterval(() => api("heartbeat", {}).catch(() => {}), 10000);
+api("heartbeat", {}).catch(() => {});
+$("#quitBtn").onclick = async () => {
+  if (S.state && (S.state.scan.running || S.state.op.running)) { toast("Attendez la fin de l'opération en cours."); return; }
+  await api("quit", {}).catch(() => {}); document.body.innerHTML = `<div class="empty"><h1>Programme fermé</h1><p>Vous pouvez fermer cette fenêtre.</p></div>`;
+};
+
+// ------------------------------------------------------------ accueil
+function shareCard() {
+  const sh = S.state ? S.state.share : {enabled: false};
+  if (S.state && !sh.available) return "";
+  return `<div class="card"><div style="font:600 16px var(--display)">Partage avec la personne qui vous aide</div>
+    <p class="muted small" style="margin:6px 0 10px">Elle verra en direct le déroulement de l'analyse et le rapport : tailles, noms de dossiers, réglages OneDrive.
+    <b>Jamais</b> le contenu de vos fichiers ni vos mots de passe.</p>
+    <div class="switch"><div><b>Partager en direct</b><div class="small soft">Vous pouvez l'arrêter à tout moment</div></div>
+      <label class="toggle"><input type="checkbox" id="shareOn" ${sh.enabled ? "checked" : ""}><span></span></label></div>
+    <div class="switch"><div><b>Masquer les noms de mes dossiers</b><div class="small soft">À choisir avant d'activer le partage</div></div>
+      <label class="toggle"><input type="checkbox" id="shareMask" ${sh.masked ? "checked" : ""} ${sh.enabled ? "disabled" : ""}><span></span></label></div>
+    ${sh.enabled ? `<div style="margin-top:10px">Code à lui communiquer :<br><span class="code">${esc(sh.code)}</span></div>` : ""}</div>`;
+}
+function bindShare() {
+  const on = $("#shareOn"); if (!on) return;
+  on.onchange = async () => {
+    on.disabled = true;
+    try { const r = await api("share", {enable: on.checked, masked: $("#shareMask").checked}); S.state.share.enabled = r.enabled; S.state.share.code = r.code || ""; }
+    catch (e) { toast(e.message, 6000); on.checked = false; }
+    await poll1(); render();
+  };
+}
+async function poll1() { try { S.state = await api("state"); } catch (e) {} }
+function pHome() {
+  const st = S.state || {};
+  return `<h1>Bonjour 👋</h1>
+  <p class="lead">Ce programme cherche pourquoi OneDrive prend autant de place sur votre ordinateur, puis vous aide à libérer cet espace <b>sans supprimer vos fichiers</b>.</p>
+  <div class="hero">
+    <div class="card">
+      <div style="font:600 18px var(--display)">Comment ça se passe</div>
+      <ul class="steps">
+        <li><span class="n">1</span><div><b>Analyse</b><div class="muted small">Le programme mesure vos dossiers OneDrive. Rien n'est modifié.</div></div></li>
+        <li><span class="n">2</span><div><b>Explications</b><div class="muted small">Vous voyez ce qui occupe l'espace et pourquoi, en clair.</div></div></li>
+        <li><span class="n">3</span><div><b>Vous décidez</b><div class="muted small">Vous choisissez les dossiers à « libérer ». Rien ne change sans votre confirmation.</div></div></li>
+      </ul>
+      <div class="safe"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <div>« Libérer de l'espace » ne supprime rien : vos fichiers restent visibles et en sécurité dans OneDrive en ligne.</div></div>
+      <div style="margin-top:22px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="primary big" id="scanBtn" ${st.scan && st.scan.running ? "disabled" : ""}>${st.hasDiag ? "Relancer l'analyse" : "Analyser mon stockage"}</button>
+        <span class="soft small">Durée : de quelques secondes à quelques minutes</span>
+      </div>
+      ${st.oneDriveRunning === false ? `<div class="alert attention" style="margin-top:16px">OneDrive ne semble pas démarré. L'analyse fonctionne quand même ; pour libérer de l'espace, ouvrez OneDrive depuis le menu Démarrer.</div>` : ""}
+    </div>
+    ${shareCard()}
+  </div>`;
+}
+bind.home = () => { bindShare(); const b = $("#scanBtn"); if (b) b.onclick = startScan; };
+async function startScan() {
+  try { await api("scan/start", {}); await poll1(); showScan({}); } catch (e) { toast(e.message, 6000); }
+}
+
+// ------------------------------------------------------------ progression de l'analyse
+function showScan(p) {
+  let o = $("#scanOv");
+  if (!o) {
+    o = document.createElement("div"); o.id = "scanOv"; o.className = "overlay";
+    o.innerHTML = `<div class="modal"><h3>Analyse en cours…</h3><p class="muted small" style="margin:0">Lecture seule : rien n'est modifié. Vous pouvez continuer à utiliser votre ordinateur.</p>
+      <div class="progress"><span></span></div>
+      <div class="stat"><div><b id="sF">0</b><span>fichiers</span></div><div><b id="sB">0</b><span>mesurés sur le disque</span></div><div><b id="sE">0</b><span>illisibles</span></div><div><b id="sT">0 s</b><span>écoulé</span></div></div>
+      <div class="small muted" id="sTg" style="margin-top:12px"></div><div class="cur" id="sP"></div>
+      <div class="actions"><button id="sCancel">Annuler l'analyse</button></div></div>`;
+    document.body.appendChild(o);
+    $("#sCancel").onclick = async () => { $("#sCancel").disabled = true; await api("scan/cancel", {}).catch(() => {}); };
+  }
+  $("#sF").textContent = int(p.files); $("#sB").textContent = bytes(p.bytes); $("#sE").textContent = int(p.errors); $("#sT").textContent = dur(p.elapsed);
+  $("#sTg").textContent = p.targetCount ? `Dossier ${p.targetIndex} sur ${p.targetCount} : ${p.target || ""}` : "Détection de la configuration OneDrive…";
+  $("#sP").textContent = p.path || "";
+}
+function hideScan() { const o = $("#scanOv"); if (o) o.remove(); }
+
+// ------------------------------------------------------------ diagnostic
+function pDiag() {
+  const d = S.diag; if (!d) return `<div class="empty">Aucune analyse.</div>`;
+  const t = d.totals;
+  const sys = (d.volumes || []).find(v => v.system) || (d.volumes || [])[0];
+  const comp = [["Téléchargés, déjà dans le cloud", t.local, "var(--c-local)"], ["« Toujours conserver sur cet appareil »", t.pinned, "var(--c-pinned)"], ["Non gérés « à la demande »", t.notCloud, "var(--c-notcloud)"]];
+  const tot = Math.max(1, t.activeAlloc);
+  let h = `<h1>Votre diagnostic</h1><p class="lead">Analyse terminée : ${int(d.scan.files)} fichiers mesurés en ${dur(d.scan.seconds)}${d.scan.canceled ? " — <b>analyse interrompue, résultats partiels</b>" : ""}.</p>`;
+  h += (d.alerts || []).map(a => `<div class="alert ${esc(a.level)}">${a.level === "probleme" ? "✖" : a.level === "attention" ? "⚠" : "ℹ"} ${esc(a.text)}</div>`).join("");
+  h += `<div class="grid g3" style="margin-top:14px">
+    <div class="card kpi"><div class="k">OneDrive sur ce PC ${gainTag("mesuré")}</div><div class="v">${bytes(t.activeAlloc)}</div><div class="n">espace réellement occupé sur le disque</div></div>
+    <div class="card kpi"><div class="k">Libérable sans rien supprimer ${gainTag("estimation")}</div><div class="v" style="color:var(--c-local)">${bytes(t.freeable)}</div><div class="n">dont ${bytes(t.local)} immédiatement</div></div>
+    <div class="card kpi"><div class="k">Espace libre ${sys ? esc(sys.root) : ""} ${gainTag("mesuré")}</div><div class="v">${sys ? bytes(sys.free) : "?"}</div><div class="n">${sys ? "sur " + bytes(sys.total) : ""}</div></div></div>`;
+  h += `<div class="card" style="margin-top:14px"><div style="font-weight:600">De quoi sont faits les ${bytes(t.activeAlloc)} de OneDrive ?</div>
+    <div class="stack">${comp.map(c => c[1] > 0 ? `<span style="width:${Math.max(.6, c[1] / tot * 100)}%;background:${c[2]}" title="${esc(c[0])}"></span>` : "").join("")}</div>
+    <div class="legend">${comp.map(c => `<span><i style="background:${c[2]}"></i>${esc(c[0])}<b>${bytes(c[1])}</b></span>`).join("")}
+      <span><i style="background:var(--cloud)"></i>En ligne uniquement (≈0 octet ici)<b>${int(t.onlineFiles)} fichiers</b></span></div>
+    ${t.orphan + t.legacy > 0 ? `<div class="alert attention" style="margin:14px 0 0">+ ${bytes(t.orphan + t.legacy)} dans d'anciens dossiers liés à OneDrive mais <b>plus synchronisés</b> (voir les conseils).</div>` : ""}</div>`;
+  h += `<h2>Pourquoi autant d'espace ?</h2><div class="card">${(d.causes || []).slice(0, 5).map((c, i) => `<div class="cause"><span class="num">${i + 1}</span><div><div class="t">${esc(c.title)}</div><div class="x">${esc(c.explanation)}</div></div><div class="b">${bytes(c.bytes)}</div></div>`).join("") || `<div class="muted">Aucune donnée OneDrive locale significative.</div>`}</div>`;
+  h += `<h2>Ce que nous vous conseillons</h2>` + (d.recommendations || []).slice(0, 4).map(recCard).join("");
+  h += `<div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">${t.freeable > 0 ? `<button class="primary big" onclick="go('free')">Libérer de l'espace</button>` : ""}<button class="big" onclick="go('tips')">Voir tous les conseils</button></div>`;
+  if ((d.volumes || []).length) {
+    h += `<h2>Vos disques</h2><div class="card">` + d.volumes.filter(v => v.total > 0).map(v => { const used = v.total - v.free, pct = used / v.total;
+      return `<div class="disk"><div><b>${esc(v.root)}</b> <span class="soft small">${esc(v.label || "")}${v.system ? " · système" : ""}</span></div>
+      <div class="meter ${pct > .9 ? "full" : ""}"><span style="width:${(pct * 100).toFixed(1)}%"></span></div><div class="small muted">${bytes(v.free)} libres sur ${bytes(v.total)}</div></div>`; }).join("") + `</div>`;
+  }
+  return h;
+}
+function recCard(r) {
+  return `<div class="card rec"><div><div class="tt">${esc(r.title)}</div><div class="pb">${esc(r.problem)}</div></div>
+    <div class="side"><div class="gain">${r.gainKind === "aucun" ? "" : bytes(r.gain)}</div><div>${gainTag(r.gainKind)} ${riskTag(r.riskLabel)}</div></div>
+    <details><summary>Détails, conséquences et vérification ›</summary><dl>
+      <dt>Explication</dt><dd>${esc(r.explanation)}</dd>
+      <dt>Action proposée</dt><dd>${esc(r.action)}${r.steps ? `<ol>${r.steps.map(s => `<li>${esc(s)}</li>`).join("")}</ol>` : ""}</dd>
+      <dt>Conséquences</dt><dd>${esc(r.consequences || "—")}</dd>
+      <dt>Conditions</dt><dd>${esc(r.prerequisites)}</dd>
+      <dt>Vérification</dt><dd>${esc(r.verification)}</dd></dl>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      ${r.inApp ? `<button class="primary" onclick="go('free')">Le faire maintenant</button>` : ""}
+      ${r.settingsUri ? `<button onclick="openSettings('storagesense')">Ouvrir le réglage Windows</button>` : ""}
+      ${r.id === "corbeille" ? `<button onclick="openSettings('recycle')">Ouvrir la Corbeille</button>` : ""}
+      ${(r.paths || []).length && !r.inApp ? r.paths.map(p => `<button onclick="openPath(${J(p)})">Ouvrir le dossier</button>`).join("") : ""}
+      </div></details></div>`;
+}
+async function openSettings(w) { try { await api("settings", {which: w}); } catch (e) { toast(e.message); } }
+async function openPath(p, select) { try { await api("open", {path: p, select: !!select}); toast("Ouvert dans l'Explorateur"); } catch (e) { toast(e.message); } }
+function pTips() {
+  const d = S.diag;
+  return `<h1>Tous les conseils</h1><p class="lead">Classés du plus sûr au plus délicat. Chaque conseil indique le gain, le risque et comment vérifier le résultat.
+    <span class="tag t-estim">estimation</span> = calculé ; <span class="tag t-pot">potentiel</span> = seulement si vous décidez après vérification.</p>` +
+    (d.recommendations || []).map(recCard).join("") +
+    `<h2>Limites de l'analyse</h2><div class="card small muted"><ul style="margin:0;padding-left:18px">${(d.limits || []).map(l => `<li>${esc(l)}</li>`).join("")}</ul></div>`;
+}
+bind.tips = () => document.querySelectorAll(".rec details").forEach(x => x.open = true);
+
+// ------------------------------------------------------------ sélection
+function addSel(path, freeable, name) {
+  for (const p of S.sel.keys()) if (within(path, p)) { toast("Déjà inclus dans un dossier sélectionné"); return; }
+  for (const p of [...S.sel.keys()]) if (within(p, path)) S.sel.delete(p);
+  S.sel.set(path, {freeable: freeable || 0, name: name || path});
+}
+function toggleSel(path, freeable, name, on) { if (on) addSel(path, freeable, name); else S.sel.delete(path); render(); }
+function updSel() {
+  const bar = $("#selbar");
+  const show = S.sel.size > 0 && ["free", "tree", "big", "dupes"].includes(S.page);
+  bar.hidden = !show; if (!show) return;
+  let sum = 0; for (const v of S.sel.values()) sum += v.freeable;
+  $("#selSum").textContent = "≈ " + bytes(sum) + " à libérer";
+  $("#selCount").textContent = `· ${S.sel.size} élément(s) · estimation`;
+}
+$("#selClear").onclick = () => { S.sel.clear(); render(); };
+$("#selGo").onclick = () => prepare([...S.sel.keys()]);
+
+// ------------------------------------------------------------ libérer
+function pFree() {
+  const d = S.diag, t = d.totals;
+  if (S.state && S.state.readOnly) return `<h1>Libérer de l'espace</h1><div class="alert attention">Le programme a été lancé en lecture seule : aucune modification n'est possible.</div>`;
+  if (!t.freeable) return `<h1>Libérer de l'espace</h1><div class="card empty">Aucun fichier OneDrive téléchargé n'a été trouvé : il n'y a rien à libérer de cette façon.<br><br><button onclick="go('tips')">Voir les autres conseils</button></div>`;
+  let h = `<h1>Libérer de l'espace</h1><p class="lead">Choisissez les dossiers dont vous n'avez pas besoin sans Internet. Ils resteront visibles et intacts dans OneDrive ; ils se téléchargeront automatiquement quand vous les ouvrirez.</p>
+  <div class="grid g2"><div class="safe"><b>Ce qui ne change pas</b> : aucun fichier supprimé, déplacé ou renommé. Tout reste dans OneDrive en ligne.</div>
+  <div class="alert attention" style="margin:0"><div><b>Ce qui change</b> : il faudra Internet pour ouvrir ces fichiers tant qu'ils ne sont pas retéléchargés.</div></div></div>`;
+  const plans = (d.plan || []).filter(p => p.reachable);
+  if (plans.length) h += `<h2>Sélections toutes prêtes</h2><div class="plan">${plans.map(p => `<button onclick='applyPlan(${p.goal})'>Récupérer ${bytes(p.goal)} · ${p.folders.length} dossier(s)</button>`).join("")}</div><div class="small soft">Les dossiers les moins utilisés (anciens, non épinglés) sont choisis en premier.</div>`;
+  h += `<h2>Dossiers où l'espace est concentré</h2><div class="card" style="padding:6px 8px"><table><thead><tr><th style="width:36px"></th><th>Dossier</th><th class="num">Libérable</th><th>Remarques</th><th></th></tr></thead><tbody>` +
+    (d.folders || []).slice(0, 40).map(f => { const on = [...S.sel.keys()].some(p => within(f.path, p));
+      return `<tr><td><input type="checkbox" ${on ? "checked" : ""} onchange="toggleSel(${J(f.path)}, ${f.freeable}, ${J(f.name)}, this.checked)"></td>
+      <td><div class="name"><span><b>${esc(f.name)}</b></span></div><div class="path">${esc(f.path)}</div></td>
+      <td class="num"><b>${bytes(f.freeable)}</b></td>
+      <td>${f.pinned > 0 ? `<span class="tag t-warn">${bytes(f.pinned)} toujours conservés</span> ` : ""}${f.old > 0 ? `<span class="tag t-mute">${bytes(f.old)} non modifiés depuis 1 an</span>` : ""}</td>
+      <td><button class="link small" onclick="openPath(${J(f.path)})">Ouvrir</button></td></tr>`; }).join("") +
+    `</tbody></table></div><p class="small soft">Pour choisir plus précisément, utilisez <a href="#" onclick="go('tree');return false">Dossiers</a> ou <a href="#" onclick="go('big');return false">Gros fichiers</a>.</p>`;
+  return h;
+}
+function applyPlan(goal) {
+  const p = (S.diag.plan || []).find(x => x.goal === goal); if (!p) return;
+  const byPath = new Map((S.diag.folders || []).map(f => [f.path, f]));
+  for (const path of p.folders) { const f = byPath.get(path); addSel(path, f ? f.freeable : 0, f ? f.name : path); }
+  render(); toast("Sélection ajoutée : vérifiez-la, puis cliquez sur Continuer");
+}
+
+// ------------------------------------------------------------ récapitulatif et confirmation
+function modal(html) { const r = $("#modalRoot"); r.innerHTML = `<div class="overlay"><div class="modal">${html}</div></div>`; return r; }
+function closeModal() { $("#modalRoot").innerHTML = ""; }
+async function prepare(paths) {
+  modal(`<h3>Préparation du récapitulatif…</h3><p class="muted">Relecture de vos dossiers. Rien n'est modifié.</p><div class="progress"><span></span></div>`);
+  let pv;
+  try { pv = await api("prepare", {paths}); } catch (e) { modal(`<h3>Impossible de continuer</h3><p>${esc(e.message)}</p><div class="actions"><button onclick="closeModal()">Fermer</button></div>`); return; }
+  confirmModal(pv);
+}
+function confirmModal(pv) {
+  const restore = pv.kind === "restaurer";
+  modal(`<h3>${restore ? "Remettre le réglage d'avant" : "Récapitulatif — rien n'a encore été modifié"}</h3>
+    ${restore ? `<p class="muted">Les éléments retrouveront leur réglage d'avant l'opération. Ceux qui étaient « toujours conservés » seront retéléchargés (Internet et espace disque nécessaires).</p>` :
+    `<p class="muted">Ces dossiers deviendront « disponibles uniquement en ligne ».</p>`}
+    <ul>${pv.paths.slice(0, 8).map(p => `<li class="small">${esc(p)}</li>`).join("")}${pv.paths.length > 8 ? `<li class="small">… et ${pv.paths.length - 8} autres</li>` : ""}</ul>
+    ${restore ? `<div class="row"><span>Éléments concernés</span><b>${int(pv.files)}</b></div>` : `
+    <div class="row"><span>Fichiers concernés</span><b>${int(pv.files)}</b></div>
+    <div class="row"><span>Déjà en ligne / non gérés (ignorés)</span><b>${int(pv.onlineFiles)} / ${int(pv.notCloudFiles)}</b></div>
+    <div class="row"><span>Réglés « toujours conserver »</span><b>${int(pv.pinnedFiles)}</b></div>
+    <div class="row"><span>Espace qui devrait être libéré <span class="tag t-estim">estimation</span></span><b style="color:var(--c-local)">${bytes(pv.estGain)}</b></div>`}
+    ${(pv.warnings || []).map(w => `<div class="alert attention" style="margin-top:10px">⚠ ${esc(w)}</div>`).join("")}
+    ${(pv.rejected || []).map(w => `<div class="alert info" style="margin-top:6px">Exclu : ${esc(w)}</div>`).join("")}
+    <div style="margin-top:16px"><label class="small muted">Pour confirmer, tapez <b>${esc(pv.confirmWord)}</b></label><input type="text" id="cWord" autocomplete="off" spellcheck="false"></div>
+    ${pv.highRisk ? `<div style="margin-top:12px"><label class="small" style="color:var(--warn)">Risque particulier (voir l'avertissement). Pour confirmer en connaissance de cause, tapez <b>OUI</b></label><input type="text" id="cRisk" autocomplete="off"></div>` : ""}
+    <div class="actions"><button onclick="closeModal()">Annuler</button><button class="primary" id="cGo" disabled>${restore ? "Remettre comme avant" : "Libérer l'espace"}</button></div>`);
+  const chk = () => { $("#cGo").disabled = !($("#cWord").value.trim().toUpperCase() === pv.confirmWord && (!pv.highRisk || ($("#cRisk").value.trim().toUpperCase() === "OUI"))); };
+  $("#cWord").oninput = chk; if ($("#cRisk")) $("#cRisk").oninput = chk; $("#cWord").focus();
+  $("#cGo").onclick = () => execute(pv, $("#cWord").value, $("#cRisk") ? $("#cRisk").value : "");
+}
+async function execute(pv, word, risk) {
+  try { await api("execute", {token: pv.token, confirm: word, risk}); }
+  catch (e) { modal(`<h3>Opération annulée</h3><p>${esc(e.message)}</p><p class="muted small">Rien n'a été modifié.</p><div class="actions"><button onclick="closeModal()">Fermer</button></div>`); return; }
+  modal(`<h3>Application en cours…</h3><p class="muted small">Vous pouvez arrêter à tout moment : les éléments déjà traités restent dans leur nouvel état, rien n'est perdu.</p>
+    <div class="progress"><span></span></div><div class="stat"><div><b id="oS">0</b><span>fichiers examinés</span></div><div><b id="oC">0</b><span>modifiés</span></div><div><b id="oE">0</b><span>erreurs</span></div></div>
+    <div class="actions"><button id="oStop">Arrêter</button></div>`);
+  $("#oStop").onclick = () => api("op/cancel", {}).catch(() => {});
+  for (;;) {
+    await new Promise(r => setTimeout(r, 500));
+    const op = await api("op").catch(() => null); if (!op) continue;
+    if ($("#oS")) { $("#oS").textContent = int(op.seen); $("#oC").textContent = int(op.changed); $("#oE").textContent = int(op.errors); }
+    if (!op.running) { opDone(op); return; }
+  }
+}
+function opDone(op) {
+  if (op.error) { modal(`<h3>Opération interrompue</h3><p>${esc(op.error)}</p><div class="actions"><button onclick="closeModal()">Fermer</button></div>`); return; }
+  const r = op.run; S.sel.clear();
+  modal(`<h3>${r.canceled ? "Opération arrêtée" : "C'est fait ✓"}</h3>
+    <p class="muted">${r.kind === "restaurer" ? "Les réglages précédents ont été remis." : "OneDrive retire maintenant les copies locales en arrière-plan. Cela peut prendre de quelques secondes à quelques minutes."}</p>
+    <div class="row"><span>Fichiers examinés</span><b>${int(r.seen)}</b></div>
+    <div class="row"><span>${r.kind === "restaurer" ? "Éléments remis comme avant" : "Réglés sur « en ligne uniquement »"}</span><b>${int(r.changed)}</b></div>
+    <div class="row"><span>Déjà en ligne / non gérés</span><b>${int(r.already)} / ${int(r.notCloud)}</b></div>
+    ${r.errors ? `<div class="alert attention" style="margin-top:10px">${int(r.errors)} élément(s) n'ont pas pu être modifiés (fichier ouvert ou accès refusé).<br><span class="small">${(r.errorSamples || []).slice(0, 4).map(esc).join("<br>")}</span></div>` : ""}
+    <div id="verRes"></div>
+    <div class="actions"><button onclick="closeModal();render()">Fermer</button>${r.kind === "liberer" ? `<button class="primary" id="verBtn">Vérifier le résultat</button>` : ""}</div>`);
+  if ($("#verBtn")) $("#verBtn").onclick = () => verify("", $("#verRes"));
+}
+async function verify(journal, target) {
+  target.innerHTML = `<div class="progress"><span></span></div><div class="small muted">Mesure de l'état réel des fichiers…</div>`;
+  try {
+    const {verify: v, run} = await api("verify", {journal});
+    const deltas = Object.entries(v.diskDelta || {}).map(([vol, d]) => `<div class="row"><span>Espace libre du disque ${esc(vol)} : variation depuis l'opération</span><b>${bytes(d)}</b></div>`).join("");
+    target.innerHTML = `<div style="margin-top:14px;font-weight:600">Vérification</div>
+      <div class="row"><span>En ligne uniquement maintenant</span><b>${int(v.online)} / ${int(v.files)}</b></div>
+      ${run.kind === "liberer" ? `<div class="row"><span>Espace libéré par ces fichiers <span class="tag t-mesure">mesuré</span></span><b style="color:var(--c-local)">${bytes(v.freed)}</b></div>` : ""}
+      ${deltas}
+      ${v.stillLocal > 0 ? `<div class="alert attention" style="margin-top:10px">${int(v.stillLocal)} fichier(s) encore sur le disque (${bytes(v.stillLocalSize)}). Causes possibles : OneDrive n'a pas fini, fichier ouvert, pas encore synchronisé ou synchronisation en pause. Réessayez dans quelques minutes.</div>` : `<div class="safe" style="margin-top:10px">Tout est en ligne uniquement.</div>`}
+      <div class="small soft" style="margin-top:6px">La variation d'espace libre inclut l'activité des autres programmes.</div>`;
+  } catch (e) { target.innerHTML = `<div class="alert probleme">${esc(e.message)}</div>`; }
+}
+
+// ------------------------------------------------------------ dossiers
+function pTree() { return `<h1>Dossiers</h1><p class="lead">Taille réelle sur le disque de chaque dossier analysé. Cliquez sur un dossier pour l'ouvrir ; cochez pour l'ajouter à la sélection à libérer.</p><div id="treeBox" class="card"><div class="progress"><span></span></div></div>`; }
+bind.tree = async () => {
+  let r; try { r = await api("tree?path=" + encodeURIComponent(S.tree.path)); } catch (e) { $("#treeBox").innerHTML = esc(e.message); return; }
+  const crumbs = [`<a onclick="treeGo('')">Tous les dossiers</a>`];
+  if (r.node) crumbs.push(`<span class="soft">›</span> <b>${esc(r.node.name)}</b>`);
+  let h = `<div class="crumbs">${crumbs.join(" ")}${r.parent ? ` <span style="flex:1"></span><button class="small" onclick="treeGo(${J(r.parent)})">↑ Dossier parent</button>` : ""}</div>`;
+  if (r.node) h += `<div class="small muted" style="margin-bottom:10px">${esc(r.node.path)} · ${bytes(r.node.alloc)} sur le disque · ${bytes(r.node.freeable)} libérables · ${int(r.node.files)} fichiers</div>`;
+  const max = Math.max(1, ...(r.items || []).map(i => i.alloc));
+  h += `<table><thead><tr><th style="width:36px"></th><th>Nom</th><th class="num">Sur le disque</th><th class="num">Libérable</th><th></th><th></th></tr></thead><tbody>` +
+    (r.items || []).map(i => { const on = [...S.sel.keys()].some(p => within(i.path, p));
+      const can = i.active && i.freeable > 0 && !i.link;
+      return `<tr class="${i.hasChildren ? "click" : ""}" ${i.hasChildren ? `onclick="treeGo(${J(i.path)})"` : ""}>
+      <td onclick="event.stopPropagation()">${can ? `<input type="checkbox" ${on ? "checked" : ""} onchange="toggleSel(${J(i.path)}, ${i.freeable}, ${J(i.name)}, this.checked)">` : ""}</td>
+      <td><div class="name">📁 <span>${esc(i.name)}</span> ${pinTag(i.pin)} ${i.link ? `<span class="tag t-mute">lien (non suivi)</span>` : ""} ${i.error ? `<span class="tag t-err">illisible</span>` : ""} ${i.kind ? `<span class="tag t-mute">${esc(i.kind)}</span>` : ""}</div></td>
+      <td class="num">${bytes(i.alloc)}<span class="bar-inline"><span style="width:${(i.alloc / max * 100).toFixed(1)}%"></span></span></td>
+      <td class="num">${i.active ? bytes(i.freeable) : `<span class="soft small">non synchronisé</span>`}</td><td>${i.hasChildren ? `<span class="soft">›</span>` : ""}</td>
+      <td onclick="event.stopPropagation()"><button class="link small" onclick="openPath(${J(i.path)})">Ouvrir</button></td></tr>`; }).join("") + `</tbody></table>`;
+  $("#treeBox").innerHTML = h;
+};
+function treeGo(p) { S.tree.path = p; render(); }
+
+// ------------------------------------------------------------ gros fichiers
+function pBig() {
+  return `<h1>Gros fichiers</h1><p class="lead">Les fichiers de plus de 50 Mo. « Sur le disque » est l'espace réellement occupé : un fichier en ligne uniquement n'occupe presque rien.</p>
+  <div class="toolbar"><input type="text" id="bigQ" placeholder="Rechercher un nom…" value="${esc(S.bigQ)}">
+    <select id="bigF"><option value="">Tous les états</option><option value="local">Téléchargés (libérables)</option><option value="epingle">Toujours conservés</option><option value="en_ligne">En ligne uniquement</option><option value="non_cloud">Non gérés</option></select></div>
+  <div class="card" style="padding:6px 8px" id="bigBox"><div class="progress"><span></span></div></div>`;
+}
+bind.big = async () => {
+  $("#bigF").value = S.bigFilter;
+  $("#bigQ").oninput = e => { S.bigQ = e.target.value; drawBig(); };
+  $("#bigF").onchange = e => { S.bigFilter = e.target.value; drawBig(); };
+  if (!S.big) { try { S.big = await api("big"); } catch (e) { $("#bigBox").innerHTML = esc(e.message); return; } }
+  drawBig();
+};
+function drawBig() {
+  let l = (S.big || []).filter(f => (!S.bigFilter || f.stateKey === S.bigFilter) && (!S.bigQ || f.name.toLowerCase().includes(S.bigQ.toLowerCase())));
+  const k = S.bigSort; l = l.slice().sort((a, b) => k === "modified" ? a.modified.split("/").reverse().join("").localeCompare(b.modified.split("/").reverse().join("")) : b[k] - a[k]);
+  $("#bigBox").innerHTML = l.length ? `<table><thead><tr><th style="width:36px"></th><th>Fichier</th><th class="num sort" onclick="bigSort('alloc')">Sur le disque ${k === "alloc" ? "▾" : ""}</th><th class="num sort" onclick="bigSort('size')">Taille ${k === "size" ? "▾" : ""}</th><th>État</th><th class="sort" onclick="bigSort('modified')">Modifié ${k === "modified" ? "▴" : ""}</th><th></th></tr></thead><tbody>` +
+    l.slice(0, 300).map(f => { const on = [...S.sel.keys()].some(p => within(f.path, p)); const can = f.active && (f.stateKey === "local" || f.stateKey === "epingle");
+      return `<tr><td>${can ? `<input type="checkbox" ${on ? "checked" : ""} onchange="toggleSel(${J(f.path)}, ${f.alloc}, ${J(f.name)}, this.checked)">` : ""}</td>
+      <td><div class="name"><span><b>${esc(f.name)}</b></span></div><div class="path">${esc(f.path)}</div></td><td class="num">${bytes(f.alloc)}</td><td class="num">${bytes(f.size)}</td>
+      <td>${stateTag(f.stateKey, f.state)}</td><td class="small">${esc(f.modified)}</td><td><button class="link small" onclick="openPath(${J(f.path)}, true)">Montrer</button></td></tr>`; }).join("") + `</tbody></table>` : `<div class="empty">Aucun fichier ne correspond.</div>`;
+}
+function bigSort(k) { S.bigSort = k; drawBig(); }
+
+// ------------------------------------------------------------ doublons
+function pDupes() {
+  const st = S.state || {}, running = st.dupes && st.dupes.running;
+  return `<h1>Doublons</h1><p class="lead">Fichiers identiques au bit près (vérifiés par empreinte SHA-256), à partir de 1 Mo. Les fichiers « en ligne uniquement » ne sont jamais lus, car cela les téléchargerait. <b>Rien n'est supprimé automatiquement.</b></p>
+  ${running ? `<div class="card"><b>Recherche en cours…</b><div class="progress"><span></span></div><div class="small muted" id="dupProg"></div><div class="actions" style="display:flex;justify-content:flex-end"><button onclick="api('dupes/cancel',{})">Arrêter</button></div></div>` :
+  `<div style="margin-bottom:16px"><button class="primary" id="dupGo">${S.state && S.state.hasDupes ? "Relancer la recherche" : "Rechercher les doublons"}</button> <span class="small soft">La recherche lit le contenu des fichiers locaux : elle peut prendre plusieurs minutes.</span></div>`}
+  <div id="dupBox"></div>`;
+}
+bind.dupes = async () => {
+  if ($("#dupGo")) $("#dupGo").onclick = async () => { try { await api("dupes/start", {}); await poll1(); render(); } catch (e) { toast(e.message); } };
+  const r = await api("dupes").catch(() => null);
+  if (!r || !r.done) return;
+  $("#dupBox").innerHTML = `<div class="grid g3" style="margin-bottom:14px"><div class="card kpi"><div class="k">Groupes de doublons</div><div class="v">${int(r.total)}</div></div>
+    <div class="card kpi"><div class="k">Espace redondant ${gainTag("potentiel")}</div><div class="v">${bytes(r.gain)}</div><div class="n">si une seule copie restait sur le disque</div></div>
+    <div class="card kpi"><div class="k">Non vérifiables</div><div class="v">${int(r.unverified)}</div><div class="n">une copie est en ligne uniquement</div></div></div>
+    ${r.complete ? "" : `<div class="alert attention">Recherche interrompue : résultats partiels.</div>`}
+    <div class="small muted" style="margin-bottom:10px">Option sûre : cochez une copie située dans OneDrive pour libérer son espace local (elle reste en ligne). Pour supprimer une copie, faites-le vous-même dans l'Explorateur après vérification.</div>` +
+    (r.groups || []).map(g => `<div class="card group"><div class="gh"><b>${g.files.length} copies de ${bytes(g.size)}</b><span class="tag t-pot">gain possible ${bytes(g.gain)}</span></div><table><tbody>` +
+      g.files.map(f => { const on = [...S.sel.keys()].some(p => within(f.path, p)); const can = f.active && (f.stateKey === "local" || f.stateKey === "epingle");
+        return `<tr><td style="width:36px">${can ? `<input type="checkbox" ${on ? "checked" : ""} onchange="toggleSel(${J(f.path)}, ${f.alloc}, ${J(f.name)}, this.checked)">` : ""}</td>
+        <td><div class="path" style="max-width:none;color:var(--text)">${esc(f.path)}</div></td><td class="small">${esc(f.modified)}</td><td>${stateTag(f.stateKey, f.state)}</td>
+        <td>${f.active ? `<span class="tag t-mute">OneDrive</span>` : `<span class="tag t-mute">hors OneDrive</span>`}</td><td><button class="link small" onclick="openPath(${J(f.path)}, true)">Montrer</button></td></tr>`; }).join("") + `</tbody></table></div>`).join("");
+};
+
+// ------------------------------------------------------------ historique
+function pHistory() { return `<h1>Historique</h1><p class="lead">Les opérations réalisées sur cet ordinateur. Vous pouvez vérifier leur résultat ou remettre le réglage d'avant.</p><div id="histBox"><div class="progress"><span></span></div></div>`; }
+bind.history = async () => {
+  const l = await api("history").catch(() => []);
+  $("#histBox").innerHTML = l && l.length ? l.map((h, i) => `<div class="card" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+    <div><b>${h.kind === "liberer" ? "Libération d'espace" : h.kind === "restaurer" ? "Retour au réglage d'avant" : esc(h.kind)}</b> <span class="soft small">· ${new Date(h.started).toLocaleString("fr-FR")}</span>
+    <div class="small muted">${(h.paths || []).slice(0, 3).map(esc).join("<br>")}${h.paths.length > 3 ? `<br>… et ${h.paths.length - 3} autres` : ""}</div></div>
+    <div style="display:flex;gap:8px;align-items:flex-start"><button onclick="histVerify(${J(h.journal)}, ${i})">Vérifier</button>${h.kind === "liberer" ? `<button onclick="histRestore(${J(h.journal)})">Remettre comme avant</button>` : ""}</div></div>
+    <div id="hv${i}"></div></div>`).join("") : `<div class="card empty">Aucune opération pour l'instant.</div>`;
+};
+function histVerify(j, i) { verify(j, $("#hv" + i)); }
+async function histRestore(j) { try { const pv = await api("restore/prepare", {journal: j}); confirmModal(pv); } catch (e) { toast(e.message); } }
+
+// ------------------------------------------------------------ rapport
+function pReport() {
+  const sh = S.state ? S.state.share : {};
+  return `<h1>Rapport</h1><p class="lead">Un fichier texte qui résume tout le diagnostic, à envoyer à la personne qui vous aide si le partage en direct n'est pas activé.</p>
+  <div class="grid g2"><div class="card"><b>Enregistrer le rapport</b><p class="small muted">Le fichier est créé à côté du programme, puis le dossier s'ouvre avec le fichier sélectionné.${sh.masked ? " Les noms de dossiers seront masqués." : ""}</p><button class="primary" id="expBtn">Enregistrer le rapport</button></div>
+  ${shareCard()}</div>`;
+}
+bind.report = () => { bindShare(); $("#expBtn").onclick = async () => { try { await api("export", {}); toast(S.state.share.enabled ? "Rapport enregistré et transmis" : "Rapport enregistré"); } catch (e) { toast(e.message); } }; };
+
+render(); poll();
+</script>
+</body>
+</html>

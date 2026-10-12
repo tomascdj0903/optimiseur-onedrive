@@ -1,6 +1,6 @@
 # Optimiseur OneDrive
 
-Outil Windows qui diagnostique et réduit l'espace disque occupé par OneDrive, **sans perte de données**. Il se présente sous forme d'un exécutable portable en console (français). Il peut, avec l'accord de l'utilisateur, partager sa console et son rapport en direct vers une webapp de suivi privée.
+Outil Windows qui diagnostique et réduit l'espace disque occupé par OneDrive, **sans perte de données**. Il se présente sous forme d'un exécutable portable (français). Il ouvre une interface graphique : une page locale servie sur `127.0.0.1` avec un jeton aléatoire et affichée dans une fenêtre d'application Edge. Une console de journal reste ouverte à côté. Le mode texte complet reste disponible avec `--console`. Il peut, avec l'accord de l'utilisateur, partager sa console et son rapport en direct vers une webapp de suivi privée.
 
 - Guide pour la personne aidée : [GUIDE-UTILISATEUR.md](GUIDE-UTILISATEUR.md)
 - Téléchargement direct : https://github.com/tomascdj0903/optimiseur-onedrive/raw/main/release/OptimiseurOneDrive.exe (empreinte dans `release/OptimiseurOneDrive.exe.sha256`)
@@ -110,7 +110,8 @@ La simulation (`simfs`) reproduit le comportement de OneDrive : la libération e
 ## Options
 
 ```
---diagnostic     analyse + rapport, aucune modification possible, puis fermeture
+--console        interface texte uniquement (menus numérotés)
+--diagnostic     analyse + rapport en mode texte, aucune modification possible, puis fermeture
 --lecture-seule  interdit toute modification
 --sans-maj       ne cherche pas de mise à jour
 --sans-partage   ne propose pas le partage en direct
@@ -140,7 +141,7 @@ La simulation (`simfs`) reproduit le comportement de OneDrive : la libération e
 ## Architecture
 
 ```
-cmd/optimiseur        console (menus, confirmation, partage, mise à jour)
+cmd/optimiseur        interface graphique (gui.go + ui/index.html embarqué), console texte, partage, mise à jour
 internal/platform     API Windows (FindFirstFileExW, attributs, registre, dossiers connus, Corbeille…) + implémentation générique pour le développement
 internal/scan         parcours en lecture seule, agrégats, gros fichiers, candidats doublons
 internal/analysis     détection des cibles, diagnostic, causes, recommandations, plan

@@ -15,52 +15,45 @@ Rien à installer : c'est un programme unique. Il se met à jour tout seul ensui
 2. Si une fenêtre bleue **« Windows a protégé votre ordinateur »** apparaît, cliquez sur **« Informations complémentaires »**, puis sur **« Exécuter quand même »**. Ce message s'affiche pour tout petit programme qui n'est pas signé par un éditeur commercial.
 3. Aucun mot de passe ni droit administrateur n'est demandé.
 
-## 3. Répondre aux deux questions du début
+## 3. Utiliser le programme
 
-- **« Activer le partage en direct ? »** Répondez **O** si quelqu'un vous aide à distance. Il verra ce qui s'affiche dans la fenêtre. Un **code de 6 caractères** apparaît alors : donnez-le-lui.
-  Le contenu de vos fichiers n'est jamais envoyé, et vos mots de passe non plus.
-- **« Masquer les noms de vos dossiers ? »** Répondez **O** si vous préférez que les noms ne soient pas visibles.
+Une fenêtre **Optimiseur OneDrive** s'ouvre, accompagnée d'une petite fenêtre noire qui affiche le journal. **Laissez la fenêtre noire ouverte** : elle se ferme toute seule quand vous fermez le programme.
 
-## 4. Lancer l'analyse
+1. **Partage (facultatif).** Sur l'écran d'accueil, activez « Partager en direct » si quelqu'un vous aide à distance, puis donnez-lui le **code de 6 caractères** affiché. Vous pouvez aussi masquer les noms de vos dossiers. Le contenu de vos fichiers n'est jamais envoyé.
+2. **Analyse.** Cliquez sur **« Analyser mon stockage »**. Rien n'est modifié pendant l'analyse, et vous pouvez l'annuler.
+3. **Diagnostic.** Vous voyez :
+   - combien d'espace OneDrive occupe vraiment ;
+   - **pourquoi** il en occupe autant ;
+   - les conseils, du plus sûr au plus délicat.
 
-Appuyez sur **Entrée**. L'analyse **ne modifie rien**. Elle peut durer quelques minutes.
-
-À la fin, vous voyez trois choses :
-- combien d'espace OneDrive occupe vraiment ;
-- **pourquoi** il occupe autant de place ;
-- la liste des solutions, de la plus sûre à la plus délicate.
-
-## 5. Libérer de l'espace (menu 6)
+   Les étiquettes indiquent la fiabilité des chiffres : **mesuré**, **estimation** ou **potentiel**.
+4. **Libérer de l'espace.**
+   - Cochez les dossiers concernés, ou cliquez sur une sélection toute prête (par exemple « Récupérer 100 Go »).
+   - Cliquez sur **Continuer** et lisez le récapitulatif.
+   - Pour confirmer, tapez **LIBERER**. Le programme demande aussi **OUI** si certains fichiers étaient réglés pour rester hors connexion.
+5. **Vérifier.** Cliquez ensuite sur **« Vérifier le résultat »**. OneDrive peut mettre quelques minutes à libérer l'espace.
 
 « Libérer de l'espace » **n'est pas une suppression** :
 - le fichier reste visible dans l'Explorateur, avec un petit nuage ;
 - il reste intact dans OneDrive en ligne ;
 - il se télécharge de nouveau tout seul quand vous l'ouvrez. Il faut alors une connexion Internet.
 
-Pour le faire :
-1. Choisissez les dossiers. Tapez par exemple `+1` pour ajouter le premier, ou `P100` pour la sélection qui vise 100 Go.
-2. Tapez `V` pour valider.
-3. Lisez le récapitulatif. Si vous êtes d'accord, tapez **`LIBERER`**. Si certains fichiers étaient réglés pour rester hors connexion, le programme demande en plus **`OUI`**.
-4. Le programme vérifie ensuite le résultat. OneDrive peut mettre quelques minutes à libérer l'espace.
+## 4. Les autres pages
 
-## 6. Le reste du menu
-
-| Touche | Rôle |
+| Page | Rôle |
 |---|---|
-| 2 | Le détail de chaque recommandation (risques, conditions, vérification) |
-| 3 | Parcourir les dossiers et leur taille |
-| 4 | Les plus gros fichiers |
-| 5 | Rechercher les doublons. Rien n'est supprimé automatiquement. |
-| 7 | Revérifier une opération ou remettre le réglage d'avant |
-| 8 | Enregistrer le rapport dans un fichier `.txt` pour l'envoyer par e-mail |
-| A | Ouvrir l'Assistant Stockage de Windows |
-| 0 | Quitter |
+| Conseils détaillés | Chaque conseil avec son gain, son risque, ses conditions et la manière de vérifier |
+| Dossiers | Parcourir les dossiers et leur taille réelle sur le disque |
+| Gros fichiers | Les fichiers de plus de 50 Mo, avec recherche et tri |
+| Doublons | Fichiers identiques. Rien n'est supprimé automatiquement. |
+| Historique | Revérifier une opération ou « Remettre comme avant » |
+| Rapport | Enregistrer un fichier `.txt` à envoyer par e-mail |
 
 ## En cas de souci
 
+- **La fenêtre ne s'ouvre pas** : la fenêtre noire affiche une adresse commençant par `http://127.0.0.1`. Copiez-la dans votre navigateur.
 - **« OneDrive n'est pas démarré »** : ouvrez OneDrive depuis le menu Démarrer, attendez qu'il soit connecté, puis réessayez.
-- **Des fichiers restent sur le disque après la libération** : ils sont peut-être ouverts dans un logiciel ou pas encore synchronisés. Fermez vos logiciels et attendez la fin de la synchronisation (icône nuage près de l'horloge). Revérifiez ensuite avec le menu 7.
+- **Des fichiers restent sur le disque après la libération** : ils sont peut-être ouverts dans un logiciel ou pas encore synchronisés. Fermez vos logiciels et attendez la fin de la synchronisation (icône nuage près de l'horloge). Revérifiez ensuite depuis l'Historique.
 - **Le programme ne se lance pas** : l'antivirus l'a peut-être bloqué. Autorisez-le, ou envoyez une capture d'écran à la personne qui vous aide.
-- **Fermer pendant une opération** : `Ctrl+C` arrête proprement. Aucun fichier n'est perdu.
 
 Le programme garde aussi un journal sur votre ordinateur, dans `%LOCALAPPDATA%\OptimiseurOneDrive\`.
